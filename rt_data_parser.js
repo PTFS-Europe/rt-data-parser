@@ -10,63 +10,36 @@ const request_headers = {
 };
 
 /** Setup */
-const rt_api_url = "https://helpdesk.ptfs-europe.com/REST/2.0";
+const RT_API_URL = "https://helpdesk.ptfs-europe.com/REST/2.0";
 const ids = ["48370", "48371", "48372"];
 let tickets = [];
 
 /** Requests */
-const get_ticket_data = async (ticket_id) => {
-  try {
-    await axios
-      .get(`${rt_api_url}/ticket/${ticket_id}`, request_headers)
-      .then((response) => {
-        let response_ticket = response.data;
+const parse_ticket = async (ticket_id) => {
+  const ticket_data = await axios
+    .get(`${RT_API_URL}/ticket/${ticket_id}`, request_headers)
+    .then((response) => {
+      return response.data;
+    });
 
-        return axios
-          .get(
-            `${rt_api_url}/user/${response_ticket.Creator.id}`,
-            request_headers
-          )
-          .then((response) => {
-            let response_user = response.data;
+  const ticket_user = await axios
+    .get(`${RT_API_URL}/user/${ticket_data.Creator.id}`, request_headers)
+    .then((response) => {
+      return response.data;
+    });
 
-            let data_ticket = {
-              id: response_ticket.EffectiveId.id,
-              all_other_correspondence:
-                `TODO - get this from ${rt_api_url}/${ticket_id}/48370/history ?`,
-              any_comment:
-                `TODO - get this from ${rt_api_url}/${ticket_id}/48370/history ?`,
-              closed: response_ticket.Resolved,
-              created: response_ticket.Created,
-              customer: response_ticket.Creator.id,
-              customer_group: response_user.Organization,
-              first_correspondence: "TODO - this needs some digging",
-              last_correspondence: response_ticket.Told,
-              outcome:
-                'TODO - search within response_ticket.CustomFields.{name=>"Outcome"}',
-              owner: response_ticket.Owner.id,
-              queue:
-                "TODO - get this from ${rt_api_url}/queue/{response_ticket.Queue.id}",
-              security_incident:
-                'TODO - search within response_ticket.CustomFields.{name=>"TicketType"}',
-              status: response_ticket.Status,
-              subject: response_ticket.Subject,
-              tickettype:
-                'TODO - search within response_ticket.CustomFields.{name=>"TicketType"}',
-            };
-            tickets.push(data_ticket);
-          });
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  } catch (error) {
-    // Handle errors
-  }
+  const ticket_history = await axios
+    .get(`${RT_API_URL}/ticket/${ticket_id}/history`, request_headers)
+    .then((response) => {
+      return response.data;
+    });
+
+  let data_ticket = create_ticket_obj(ticket_id, ticket_data, ticket_user, ticket_history);
+  tickets.push(data_ticket);
 };
 
 /** Call the functions */
-get_tickets_data(ids).then(() => console.log(convert_to_csv((tickets))));
+get_tickets_data(ids).then(() => console.log(convert_to_csv(tickets)));
 
 /**
  * Asynchronously retrieves ticket data for each ID in the given array.
@@ -76,12 +49,12 @@ get_tickets_data(ids).then(() => console.log(convert_to_csv((tickets))));
  */
 async function get_tickets_data(ids) {
   for (let i = 0; i < ids.length; i++) {
-    await get_ticket_data(ids[i]);
+    await parse_ticket(ids[i]);
   }
 }
 
 /**
- * Converts an array of objects to a CSV string.
+ * Converts an array of objects to a CSV dataset.
  *
  * @param {Array} arr - The array of objects to convert.
  * @return {string} - The CSV string representation of the array.
@@ -94,4 +67,36 @@ function convert_to_csv(arr) {
       return Object.values(it).toString();
     })
     .join("\n");
+}
+
+/**
+ * Creates a ticket object based on the provided ticket data.
+ *
+ * @param {number} ticket_id - The ID of the ticket.
+ * @param {object} ticket_data - The data of the ticket.
+ * @param {object} ticket_user - The user associated with the ticket.
+ * @param {object} ticket_history - The history of the ticket.
+ * @returns {object} The created ticket object.
+ */
+function create_ticket_obj(ticket_id, ticket_data, ticket_user, ticket_history) {
+  return {
+    id: ticket_data.EffectiveId.id,
+    all_other_correspondence: `TODO - get this from ${RT_API_URL}/ticket/${ticket_id}/history ?`,
+    any_comment: `TODO - get this from ${RT_API_URL}/ticket/${ticket_id}/history ?`,
+    closed: ticket_data.Resolved,
+    created: ticket_data.Created,
+    customer: ticket_data.Creator.id,
+    customer_group: ticket_user.Organization,
+    first_correspondence: "TODO - this needs some digging",
+    last_correspondence: ticket_data.Told,
+    outcome: 'TODO - search within ticket_data.CustomFields.{name=>"Outcome"}',
+    owner: ticket_data.Owner.id,
+    queue: "TODO - get this from ${RT_API_URL}/queue/{ticket_data.Queue.id}",
+    security_incident:
+      'TODO - search within ticket_data.CustomFields.{name=>"TicketType"}',
+    status: ticket_data.Status,
+    subject: ticket_data.Subject,
+    tickettype:
+      'TODO - search within ticket_data.CustomFields.{name=>"TicketType"}',
+  };
 }
