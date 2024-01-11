@@ -24,7 +24,7 @@ const request_headers = {
 
 /** Setup */
 const RT_API_URL = "https://helpdesk.ptfs-europe.com/REST/2.0";
-const ids = ["49455", "48372", "48373"];
+const ids = ["48372", "48384"];
 let ticket_objs = [];
 
 /** Do the work */
@@ -52,7 +52,7 @@ async function parse_ticket(ticket_id) {
   const ticket_history_data = await get_ticket_history_data(ticket_id);
   //TODO: Work with the above ticket_history_data
 
-  let ticket_obj = create_ticket_obj(
+  let ticket_obj = await create_ticket_obj(
     ticket_id,
     ticket_data,
     ticket_user,
@@ -113,7 +113,8 @@ async function get_ticket_history_data(ticket_id) {
         push_transaction(response);
       });
     } catch (err) {
-      console.log(err);
+      //TODO: Put this in an error string
+      // console.log(err);
     }
   }
 
@@ -178,29 +179,25 @@ function convert_to_csv(arr) {
  * @param {any} ticket_history_data - The history data associated with the ticket.
  * @return {object} The created ticket object.
  */
-function create_ticket_obj(
+async function create_ticket_obj(
   ticket_id,
   ticket_data,
   ticket_user,
   ticket_history_data
 ) {
-
-console.log(ticket_history_data);
+  const comments = await get_ticket_comments_data(ticket_history_data);
 
   return {
     id: ticket_data.EffectiveId.id,
     all_other_correspondence: `TODO - get this from ${RT_API_URL}/ticket/${ticket_id}/history ?`,
-    any_comment: `TODO - get this from ${RT_API_URL}/ticket/${ticket_id}/history ?`,
+    any_comment: comments,
     closed: ticket_data.Resolved,
     created: ticket_data.Created,
     customer: ticket_data.Creator.id,
     customer_group: ticket_user.Organization,
     first_correspondence: "TODO - this needs some digging",
     last_correspondence: ticket_data.Told,
-    outcome: get_ticket_custom_field_value(
-      ticket_data.CustomFields,
-      "Outcome"
-    ),
+    outcome: get_ticket_custom_field_value(ticket_data.CustomFields, "Outcome"),
     owner: ticket_data.Owner.id,
     queue: "TODO - get this from ${RT_API_URL}/queue/{ticket_data.Queue.id}",
     security_incident: get_ticket_custom_field_value(
@@ -224,7 +221,38 @@ console.log(ticket_history_data);
  * @return {string} The joined values of the matching field.
  */
 function get_ticket_custom_field_value(custom_fields, field_name) {
-  return custom_fields.find((obj) => {
-    return obj.name === field_name;
-  }).values.join(", ");
+  return custom_fields
+    .find((obj) => {
+      return obj.name === field_name;
+    })
+    .values.join(", ");
+}
+
+async function get_ticket_comments_data(ticket_history_data) {
+  let comments = ticket_history_data.filter((obj) => {
+    return obj.Type === "Comment";
+  });
+
+  let return_comments = [];
+  for (i = 0; i < comments.length; i++) {
+    const hyperlinks = comments[i]._hyperlinks;
+    for (j = 0; j < hyperlinks.length; j++) {
+      const hyperlink = hyperlinks[j];
+      if (hyperlink.ref !== "attachment") {
+        continue;
+      }
+      try {
+        const response = await axios.get(hyperlink._url, request_headers);
+        const obj = {
+          created: response.data.Created,
+          commenter: response.data.Creator.id,
+          comment: atob(response.data.Content.replace(/\n+/g, "")),
+        };
+        return_comments.push(obj);
+      } catch (error) {
+        // Handle error
+      }
+    }
+  }
+  return '"'+JSON.stringify(return_comments)?.replace(/['"]+/g, "")+'"';
 }
