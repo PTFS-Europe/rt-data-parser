@@ -216,6 +216,13 @@ console.log(ticket_history_data);
   };
 }
 
+/**
+ * Returns the value of a custom field in an array of custom fields.
+ *
+ * @param {array} custom_fields - An array of custom fields objects.
+ * @param {string} field_name - The name of the field to search for.
+ * @return {string} The joined values of the matching field.
+ */
 function get_ticket_custom_field_value(custom_fields, field_name) {
   return custom_fields.find((obj) => {
     return obj.name === field_name;
