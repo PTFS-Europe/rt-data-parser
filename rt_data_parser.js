@@ -6,7 +6,7 @@ const multibar = new cliProgress.MultiBar(
   {
     clearOnComplete: false,
     hideCursor: true,
-    format: " {bar} | {message} | {value}/{total}",
+    format: " {bar} | {message} | {value}/{total} | ETA: {eta}s",
   },
   cliProgress.Presets.shades_grey
 );
@@ -24,7 +24,7 @@ const request_headers = {
 
 /** Setup */
 const RT_API_URL = `${process.argv[2]}/REST/2.0`;
-const ids = ["1", "2", "3", "4", "48388", "48389", "48390"];
+const ids = ["48388", "48390", "1", "2", "3", "4"];
 let ticket_objs = [];
 
 /** Do the work */
@@ -50,13 +50,19 @@ async function parse_ticket(ticket_id) {
         return response.data;
       });
 
+    const ticket_queue = await axios
+      .get(`${RT_API_URL}/queue/${ticket_data.Queue.id}`, request_headers)
+      .then((response) => {
+        return response.data;
+      });
+
     const ticket_transactions_history_data =
       await get_ticket_transactions_history_data(ticket_id);
 
     let ticket_obj = await create_ticket_obj(
-      ticket_id,
       ticket_data,
       ticket_user,
+      ticket_queue,
       ticket_transactions_history_data
     );
     ticket_objs.push(ticket_obj);
@@ -175,18 +181,18 @@ function convert_to_csv(arr) {
 }
 
 /**
- * Creates a ticket object based on the provided ticket information.
+ * Creates a ticket object based on the provided ticket data.
  *
- * @param {any} ticket_id - The ID of the ticket.
- * @param {any} ticket_data - The data associated with the ticket.
- * @param {any} ticket_user - The user associated with the ticket.
- * @param {any} ticket_transactions_history_data - The history data associated with the ticket.
- * @return {object} The created ticket object.
+ * @param {Object} ticket_data - The data of the ticket.
+ * @param {Object} ticket_user - The user associated with the ticket.
+ * @param {Object} ticket_queue - The queue associated with the ticket.
+ * @param {Object[]} ticket_transactions_history_data - The transaction history data of the ticket.
+ * @return {Object} The created ticket object.
  */
 async function create_ticket_obj(
-  ticket_id,
   ticket_data,
   ticket_user,
+  ticket_queue,
   ticket_transactions_history_data
 ) {
   const comments = await get_ticket_transactions_history_data_by_type(
@@ -207,11 +213,11 @@ async function create_ticket_obj(
     created: ticket_data.Created,
     customer: ticket_data.Creator.id,
     customer_group: ticket_user.Organization,
-    first_correspondence: "TODO - this needs some digging",
+    first_correspondence: ticket_data.Started,
     last_correspondence: ticket_data.Told,
     outcome: get_ticket_custom_field_value(ticket_data.CustomFields, "Outcome"),
     owner: ticket_data.Owner.id,
-    queue: "TODO - get this from ${RT_API_URL}/queue/{ticket_data.Queue.id}",
+    queue: ticket_queue.Name,
     security_incident: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "Security Incident"
