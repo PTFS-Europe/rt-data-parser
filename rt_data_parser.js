@@ -1,9 +1,11 @@
+/** Imports */
 const axios = require("axios");
 const cliProgress = require("cli-progress");
+const colors = require("ansi-colors");
 const commander = require("commander");
 
-/** Handle CLI args */
-commander
+/** Setup CLI args */
+const CLI_PARAMS = commander
   .requiredOption("-u, --username <username>", "RT account username")
   .requiredOption("-p, --password <password>", "RT account password")
   .requiredOption(
@@ -17,67 +19,70 @@ commander
   .requiredOption(
     "-n, --numbers <numbers>",
     "How many tickets to parse, from --ticket-id downards"
-  );
-
-commander.parse();
-const cli_params = commander.opts();
+  )
+  .parse()
+  .opts();
 
 /** Setup progress bars */
-const multibar = new cliProgress.MultiBar(
+const MULTIBAR = new cliProgress.MultiBar(
   {
     clearOnComplete: false,
     hideCursor: true,
+    autopadding: true,
     format:
-      " {bar} | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
+      colors.cyan("{bar}") +
+      " | {percentage}% | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
   },
   cliProgress.Presets.shades_grey
 );
 
-const b1 = multibar.create(200, 0);
-const b2 = multibar.create(1000, 0);
+const PROGRESS_BAR_1 = MULTIBAR.create(1, 0);
+const PROGRESS_BAR_2 = MULTIBAR.create(1, 0, 0, {
+  format:
+    colors.green("{bar}") +
+    " | {percentage}% | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
+});
 
-/** Set username and password from CLI params */
-const request_headers = {
+/** Setup constants */
+const REQUEST_HEADERS = {
   auth: {
-    username: cli_params.username,
-    password: cli_params.password,
+    username: CLI_PARAMS.username,
+    password: CLI_PARAMS.password,
   },
 };
+const TOP_TICKET_ID = CLI_PARAMS.ticketId;
+const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
+const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
 
-const newest_id = cli_params.ticketId;
-const how_many = cli_params.numbers;
-
-/** Setup */
-const RT_API_URL = `${cli_params.host}/REST/2.0`;
 let ticket_objs = [];
 
-/** Do the work */
-get_tickets_data(newest_id, how_many).then(() =>
+/** Main */
+get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS).then(() =>
   console.log(convert_to_csv(ticket_objs))
 );
 
 /**
- * Asynchronously parses a ticket.
+ * Parses a ticket by fetching and processing data from the RT API.
  *
  * @param {number} ticket_id - The ID of the ticket to parse.
- * @return {void} This function does not return a value.
+ * @return {Promise<void>} - A Promise that resolves when the ticket has been parsed.
  */
 async function parse_ticket(ticket_id) {
   try {
     const ticket_data = await axios
-      .get(`${RT_API_URL}/ticket/${ticket_id}`, request_headers)
+      .get(`${RT_API_URL}/ticket/${ticket_id}`, REQUEST_HEADERS)
       .then((response) => {
         return response.data;
       });
 
     const ticket_user = await axios
-      .get(`${RT_API_URL}/user/${ticket_data.Creator.id}`, request_headers)
+      .get(`${RT_API_URL}/user/${ticket_data.Creator.id}`, REQUEST_HEADERS)
       .then((response) => {
         return response.data;
       });
 
     const ticket_queue = await axios
-      .get(`${RT_API_URL}/queue/${ticket_data.Queue.id}`, request_headers)
+      .get(`${RT_API_URL}/queue/${ticket_data.Queue.id}`, REQUEST_HEADERS)
       .then((response) => {
         return response.data;
       });
@@ -98,26 +103,30 @@ async function parse_ticket(ticket_id) {
 }
 
 /**
- * Asynchronously retrieves and parses ticket data for the given IDs.
+ * Retrieves ticket data for a specified range of ticket IDs.
  *
- * @param {Array} ids - An array of ticket IDs
- * @return {Promise} - A promise that resolves when all tickets have been parsed
+ * @param {number} TOP_TICKET_ID - The highest ticket ID in the range.
+ * @param {number} HOW_MANY_TICKETS - The number of tickets to retrieve.
+ * @return {Promise<void>} - Resolves when all ticket data has been retrieved.
  */
-async function get_tickets_data(newest_id, how_many) {
-  b1.start(how_many, 0);
-  b1_progress = 1;
-  for (let id = newest_id; id > newest_id - how_many; id--) {
-    b1.update(b1_progress++, { message: `Parsing RT ticket #${id}` });
+async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
+  PROGRESS_BAR_1.start(HOW_MANY_TICKETS, 0);
+  PROGRESS_BAR_2.update(0, { message: `Waiting on transaction data` });
+  bar1_progress = 1;
+  for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
+    PROGRESS_BAR_1.update(bar1_progress++, {
+      message: `Parsing RT ticket #${id}`,
+    });
     await parse_ticket(id);
   }
-  multibar.stop();
+  MULTIBAR.stop();
 }
 
 /**
- * Retrieves the ticket history data for a given ticket ID.
+ * Retrieves the transaction history data for a given ticket.
  *
  * @param {string} ticket_id - The ID of the ticket.
- * @return {Array} An array of transaction objects representing the ticket history.
+ * @return {Array} An array of transaction objects representing the ticket's history.
  */
 async function get_ticket_transactions_history_data(ticket_id) {
   let transactions = [];
@@ -128,7 +137,7 @@ async function get_ticket_transactions_history_data(ticket_id) {
     return await axios
       .get(
         `${RT_API_URL}/ticket/${ticket_id}/history?page=${page}`,
-        request_headers
+        REQUEST_HEADERS
       )
       .then((response) => {
         return response.data;
@@ -137,13 +146,14 @@ async function get_ticket_transactions_history_data(ticket_id) {
 
   const push_transaction = (transaction) => {
     transactions.push(transaction);
-    b2.update(progress++, {
-      message: `Processing transaction #${transaction.id}`,
+    PROGRESS_BAR_2.update(progress++, {
+      message: `Parsing transaction #${transaction.id}`,
     });
   };
 
   const ticket_history = await get_ticket_history_page(page);
-  b2.start(ticket_history.total, 0);
+  PROGRESS_BAR_2.start(ticket_history.total, 0);
+  PROGRESS_BAR_2.update(0, { message: `Waiting on transaction data` });
   for (let i = 0; i < ticket_history.items.length; i++) {
     try {
       await parse_transaction(ticket_history.items[i].id).then((response) => {
@@ -178,24 +188,24 @@ async function get_ticket_transactions_history_data(ticket_id) {
 }
 
 /**
- * Retrieves and parses a transaction from the server.
+ * Retrieves and parses a transaction from the RT API.
  *
  * @param {string} transaction_id - The ID of the transaction to retrieve.
- * @return {Promise} A promise that resolves to the parsed transaction data.
+ * @return {Promise} A promise that resolves with the parsed transaction data.
  */
 async function parse_transaction(transaction_id) {
   return await axios
-    .get(`${RT_API_URL}/transaction/${transaction_id}`, request_headers)
+    .get(`${RT_API_URL}/transaction/${transaction_id}`, REQUEST_HEADERS)
     .then((response) => {
       return response.data;
     });
 }
 
 /**
- * Converts an array of objects into a CSV string representation.
+ * Converts an array of objects into a comma-separated values (CSV) format.
  *
  * @param {Array} arr - The array of objects to be converted.
- * @return {string} - The CSV string representation of the array.
+ * @return {string} - The CSV representation of the array of objects.
  */
 function convert_to_csv(arr) {
   const array = [Object.keys(arr[0])].concat(arr);
@@ -208,13 +218,13 @@ function convert_to_csv(arr) {
 }
 
 /**
- * Creates a ticket object based on the provided ticket data.
+ * Creates a ticket object based on the provided ticket data, user information, queue, and transaction history.
  *
- * @param {Object} ticket_data - The data of the ticket.
- * @param {Object} ticket_user - The user associated with the ticket.
- * @param {Object} ticket_queue - The queue associated with the ticket.
- * @param {Object[]} ticket_transactions_history_data - The transaction history data of the ticket.
- * @return {Object} The created ticket object.
+ * @param {object} ticket_data - The data of the ticket.
+ * @param {object} ticket_user - The user associated with the ticket.
+ * @param {object} ticket_queue - The queue the ticket belongs to.
+ * @param {array} ticket_transactions_history_data - The transaction history data of the ticket.
+ * @return {object} - The created ticket object.
  */
 async function create_ticket_obj(
   ticket_data,
@@ -259,11 +269,11 @@ async function create_ticket_obj(
 }
 
 /**
- * Returns the value of a custom field in an array of custom fields.
+ * Retrieves the value of a custom field from the given array of custom fields based on the field name.
  *
- * @param {array} custom_fields - An array of custom fields objects.
- * @param {string} field_name - The name of the field to search for.
- * @return {string} The joined values of the matching field.
+ * @param {Array} custom_fields - An array of custom field objects.
+ * @param {string} field_name - The name of the field to retrieve the value for.
+ * @return {string} - The value of the custom field, joined by commas if it contains multiple values.
  */
 function get_ticket_custom_field_value(custom_fields, field_name) {
   return custom_fields
@@ -273,6 +283,13 @@ function get_ticket_custom_field_value(custom_fields, field_name) {
     .values.join(", ");
 }
 
+/**
+ * Retrieves a list of transactions of a specific type from the ticket transactions history data.
+ *
+ * @param {Array} ticket_transactions_history_data - The array of ticket transactions history data.
+ * @param {string} transaction_type - The type of transaction to filter for.
+ * @return {string} - A JSON string representation of the filtered transactions.
+ */
 async function get_ticket_transactions_history_data_by_type(
   ticket_transactions_history_data,
   transaction_type
@@ -298,7 +315,7 @@ async function get_ticket_transactions_history_data_by_type(
         continue;
       }
       try {
-        const response = await axios.get(hyperlink._url, request_headers);
+        const response = await axios.get(hyperlink._url, REQUEST_HEADERS);
 
         /**debug only */
         // if (transaction_type === "Correspond") {
@@ -327,10 +344,10 @@ async function get_ticket_transactions_history_data_by_type(
 }
 
 /**
- * Checks if the given response headers include a content type of "text/html" or "text/plain".
+ * Check if the given response headers indicate a text content type.
  *
- * @param {Array<string>} response_headers - The response headers to check.
- * @return {boolean} Returns true if the response headers include "Content-Type: text/html" or "Content-Type: text/plain", otherwise returns false.
+ * @param {string} response_headers - The response headers to check.
+ * @return {boolean} Returns true if the response headers indicate a text content type, false otherwise.
  */
 function is_content_type_text(response_headers) {
   return (
