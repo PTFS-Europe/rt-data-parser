@@ -24,7 +24,7 @@ const request_headers = {
 
 /** Setup */
 const RT_API_URL = `${process.argv[2]}/REST/2.0`;
-const ids = ["48372", "48384"];
+const ids = ["1", "2", "3", "4", "48388", "48389", "48390"];
 let ticket_objs = [];
 
 /** Do the work */
@@ -37,28 +37,32 @@ get_tickets_data(ids).then(() => console.log(convert_to_csv(ticket_objs)));
  * @return {void} This function does not return a value.
  */
 async function parse_ticket(ticket_id) {
-  const ticket_data = await axios
-    .get(`${RT_API_URL}/ticket/${ticket_id}`, request_headers)
-    .then((response) => {
-      return response.data;
-    });
+  try {
+    const ticket_data = await axios
+      .get(`${RT_API_URL}/ticket/${ticket_id}`, request_headers)
+      .then((response) => {
+        return response.data;
+      });
 
-  const ticket_user = await axios
-    .get(`${RT_API_URL}/user/${ticket_data.Creator.id}`, request_headers)
-    .then((response) => {
-      return response.data;
-    });
+    const ticket_user = await axios
+      .get(`${RT_API_URL}/user/${ticket_data.Creator.id}`, request_headers)
+      .then((response) => {
+        return response.data;
+      });
 
-  const ticket_transactions_history_data =
-    await get_ticket_transactions_history_data(ticket_id);
+    const ticket_transactions_history_data =
+      await get_ticket_transactions_history_data(ticket_id);
 
-  let ticket_obj = await create_ticket_obj(
-    ticket_id,
-    ticket_data,
-    ticket_user,
-    ticket_transactions_history_data
-  );
-  ticket_objs.push(ticket_obj);
+    let ticket_obj = await create_ticket_obj(
+      ticket_id,
+      ticket_data,
+      ticket_user,
+      ticket_transactions_history_data
+    );
+    ticket_objs.push(ticket_obj);
+  } catch (error) {
+    //Couldnt fetch ticket ${ticket_id}
+  }
 }
 
 /**
