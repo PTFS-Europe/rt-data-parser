@@ -6,7 +6,8 @@ const multibar = new cliProgress.MultiBar(
   {
     clearOnComplete: false,
     hideCursor: true,
-    format: " {bar} | {message} | {value}/{total} | ETA: {eta}s",
+    format:
+      " {bar} | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
   },
   cliProgress.Presets.shades_grey
 );
@@ -22,13 +23,18 @@ const request_headers = {
   },
 };
 
+const newest_id = 49504;
+const how_many = 20;
+
 /** Setup */
 const RT_API_URL = `${process.argv[2]}/REST/2.0`;
 const ids = ["48388", "48390", "1", "2", "3", "4"];
 let ticket_objs = [];
 
 /** Do the work */
-get_tickets_data(ids).then(() => console.log(convert_to_csv(ticket_objs)));
+get_tickets_data(newest_id, how_many).then(() =>
+  console.log(convert_to_csv(ticket_objs))
+);
 
 /**
  * Asynchronously parses a ticket.
@@ -77,11 +83,12 @@ async function parse_ticket(ticket_id) {
  * @param {Array} ids - An array of ticket IDs
  * @return {Promise} - A promise that resolves when all tickets have been parsed
  */
-async function get_tickets_data(ids) {
-  b1.start(ids.length, 0);
-  for (let i = 0; i < ids.length; i++) {
-    b1.update(i + 1, { message: `Parsing RT ticket #${ids[i]}` });
-    await parse_ticket(ids[i]);
+async function get_tickets_data(newest_id, how_many) {
+  b1.start(how_many, 0);
+  b1_progress = 1;
+  for (let id = newest_id; id > newest_id - how_many; id--) {
+    b1.update(b1_progress++, { message: `Parsing RT ticket #${id}` });
+    await parse_ticket(id);
   }
   multibar.stop();
 }
