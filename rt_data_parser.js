@@ -1,5 +1,26 @@
 const axios = require("axios");
 const cliProgress = require("cli-progress");
+const commander = require("commander");
+
+/** Handle CLI args */
+commander
+  .requiredOption("-u, --username <username>", "RT account username")
+  .requiredOption("-p, --password <password>", "RT account password")
+  .requiredOption(
+    "-h, --host <host>",
+    "RT host URL, e.g. http://localhost:8080"
+  )
+  .requiredOption(
+    "-i, --ticket-id <ticket_id>",
+    "Top-most RT ticket id to parse"
+  )
+  .requiredOption(
+    "-n, --numbers <numbers>",
+    "How many tickets to parse, from --ticket-id downards"
+  );
+
+commander.parse();
+const cli_params = commander.opts();
 
 /** Setup progress bars */
 const multibar = new cliProgress.MultiBar(
@@ -18,17 +39,16 @@ const b2 = multibar.create(1000, 0);
 /** Set username and password from CLI params */
 const request_headers = {
   auth: {
-    username: process.argv[3],
-    password: process.argv[4],
+    username: cli_params.username,
+    password: cli_params.password,
   },
 };
 
-const newest_id = 49504;
-const how_many = 20;
+const newest_id = cli_params.ticketId;
+const how_many = cli_params.numbers;
 
 /** Setup */
-const RT_API_URL = `${process.argv[2]}/REST/2.0`;
-const ids = ["48388", "48390", "1", "2", "3", "4"];
+const RT_API_URL = `${cli_params.host}/REST/2.0`;
 let ticket_objs = [];
 
 /** Do the work */
@@ -118,7 +138,7 @@ async function get_ticket_transactions_history_data(ticket_id) {
   const push_transaction = (transaction) => {
     transactions.push(transaction);
     b2.update(progress++, {
-      message: `Processing transaction ${transaction.id}`,
+      message: `Processing transaction #${transaction.id}`,
     });
   };
 
