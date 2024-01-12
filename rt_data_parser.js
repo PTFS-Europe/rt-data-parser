@@ -17,13 +17,13 @@ const b2 = multibar.create(1000, 0);
 /** Set username and password from CLI params */
 const request_headers = {
   auth: {
-    username: process.argv[2],
-    password: process.argv[3],
+    username: process.argv[3],
+    password: process.argv[4],
   },
 };
 
 /** Setup */
-const RT_API_URL = "https://helpdesk.ptfs-europe.com/REST/2.0";
+const RT_API_URL = `${process.argv[2]}/REST/2.0`;
 const ids = ["48372", "48384"];
 let ticket_objs = [];
 
