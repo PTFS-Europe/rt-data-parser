@@ -49,14 +49,14 @@ async function parse_ticket(ticket_id) {
       return response.data;
     });
 
-  const ticket_history_data = await get_ticket_history_data(ticket_id);
-  //TODO: Work with the above ticket_history_data
+  const ticket_transactions_history_data =
+    await get_ticket_transactions_history_data(ticket_id);
 
   let ticket_obj = await create_ticket_obj(
     ticket_id,
     ticket_data,
     ticket_user,
-    ticket_history_data
+    ticket_transactions_history_data
   );
   ticket_objs.push(ticket_obj);
 }
@@ -82,7 +82,7 @@ async function get_tickets_data(ids) {
  * @param {string} ticket_id - The ID of the ticket.
  * @return {Array} An array of transaction objects representing the ticket history.
  */
-async function get_ticket_history_data(ticket_id) {
+async function get_ticket_transactions_history_data(ticket_id) {
   let transactions = [];
   let page = 1;
   let progress = 1;
@@ -176,20 +176,28 @@ function convert_to_csv(arr) {
  * @param {any} ticket_id - The ID of the ticket.
  * @param {any} ticket_data - The data associated with the ticket.
  * @param {any} ticket_user - The user associated with the ticket.
- * @param {any} ticket_history_data - The history data associated with the ticket.
+ * @param {any} ticket_transactions_history_data - The history data associated with the ticket.
  * @return {object} The created ticket object.
  */
 async function create_ticket_obj(
   ticket_id,
   ticket_data,
   ticket_user,
-  ticket_history_data
+  ticket_transactions_history_data
 ) {
-  const comments = await get_ticket_comments_data(ticket_history_data);
+  const comments = await get_ticket_transactions_history_data_by_type(
+    ticket_transactions_history_data,
+    "Comment"
+  );
+
+  const correspondence = await get_ticket_transactions_history_data_by_type(
+    ticket_transactions_history_data,
+    "Correspond"
+  );
 
   return {
     id: ticket_data.EffectiveId.id,
-    all_other_correspondence: `TODO - get this from ${RT_API_URL}/ticket/${ticket_id}/history ?`,
+    all_other_correspondence: correspondence,
     any_comment: comments,
     closed: ticket_data.Resolved,
     created: ticket_data.Created,
@@ -228,14 +236,25 @@ function get_ticket_custom_field_value(custom_fields, field_name) {
     .values.join(", ");
 }
 
-async function get_ticket_comments_data(ticket_history_data) {
-  let comments = ticket_history_data.filter((obj) => {
-    return obj.Type === "Comment";
+async function get_ticket_transactions_history_data_by_type(
+  ticket_transactions_history_data,
+  transaction_type
+) {
+  let transactions = ticket_transactions_history_data.filter((obj) => {
+    return obj.Type === transaction_type;
   });
 
-  let return_comments = [];
-  for (i = 0; i < comments.length; i++) {
-    const hyperlinks = comments[i]._hyperlinks;
+  let return_transactions = [];
+  for (i = 0; i < transactions.length; i++) {
+    const hyperlinks = transactions[i]._hyperlinks;
+
+    /**debug */
+    // if (transaction_type === "Correspond") {
+    //   console.log("transaction id is" + transactions[i].id);
+    //   console.log("hi");
+    // }
+    /**debug */
+
     for (j = 0; j < hyperlinks.length; j++) {
       const hyperlink = hyperlinks[j];
       if (hyperlink.ref !== "attachment") {
@@ -243,16 +262,42 @@ async function get_ticket_comments_data(ticket_history_data) {
       }
       try {
         const response = await axios.get(hyperlink._url, request_headers);
-        const obj = {
-          created: response.data.Created,
-          commenter: response.data.Creator.id,
-          comment: atob(response.data.Content.replace(/\n+/g, "")),
-        };
-        return_comments.push(obj);
+
+        /**debug only */
+        // if (transaction_type === "Correspond") {
+        //   console.log(hyperlink._url);
+        //   console.log(
+        //     response.data.Headers.includes("Content-Type: text/html")
+        //   );
+        //   console.log("id");
+        // }
+        //*debug only*/
+
+        if (is_content_type_text(response.data.Headers)) {
+          const obj = {
+            created: response.data.Created,
+            creator: response.data.Creator.id,
+            content: atob(response.data.Content.replace(/\n+/g, "")),
+          };
+          return_transactions.push(obj);
+        }
       } catch (error) {
         // Handle error
       }
     }
   }
-  return '"'+JSON.stringify(return_comments)?.replace(/['"]+/g, "")+'"';
+  return '"' + JSON.stringify(return_transactions)?.replace(/['"]+/g, "") + '"';
+}
+
+/**
+ * Checks if the given response headers include a content type of "text/html" or "text/plain".
+ *
+ * @param {Array<string>} response_headers - The response headers to check.
+ * @return {boolean} Returns true if the response headers include "Content-Type: text/html" or "Content-Type: text/plain", otherwise returns false.
+ */
+function is_content_type_text(response_headers) {
+  return (
+    response_headers.toLowerCase().includes("content-type: text/html") ||
+    response_headers.toLowerCase().includes("content-type: text/plain")
+  );
 }
