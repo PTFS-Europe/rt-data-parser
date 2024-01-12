@@ -37,11 +37,6 @@ const MULTIBAR = new cliProgress.MultiBar(
 );
 
 const PROGRESS_BAR_1 = MULTIBAR.create(1, 0);
-const PROGRESS_BAR_2 = MULTIBAR.create(1, 0, 0, {
-  format:
-    colors.green("{bar}") +
-    " | {percentage}% | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
-});
 
 /** Setup constants */
 const REQUEST_HEADERS = {
@@ -57,9 +52,7 @@ const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
 let ticket_objs = [];
 
 /** Main */
-get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS).then(() =>
-  console.log(convert_to_csv(ticket_objs))
-);
+get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS);
 
 /**
  * Parses a ticket by fetching and processing data from the RT API.
@@ -96,7 +89,7 @@ async function parse_ticket(ticket_id) {
       ticket_queue,
       ticket_transactions_history_data
     );
-    ticket_objs.push(ticket_obj);
+    return ticket_obj;
   } catch (error) {
     //Couldnt fetch ticket ${ticket_id}
   }
@@ -111,15 +104,27 @@ async function parse_ticket(ticket_id) {
  */
 async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
   PROGRESS_BAR_1.start(HOW_MANY_TICKETS, 0);
-  PROGRESS_BAR_2.update(0, { message: `Waiting on transaction data` });
-  bar1_progress = 1;
+  PROGRESS_BAR_1.update({
+    message: `Processing tickets...`,
+  });
+
+  //Output CSV header columns
+  console.log(
+    "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,tickettype"
+  );
+
+  let promises = [];
   for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
-    PROGRESS_BAR_1.update(bar1_progress++, {
-      message: `Parsing RT ticket #${id}`,
+    const promise = parse_ticket(id).then((res) => {
+      PROGRESS_BAR_1.increment();
+      //Output csv ticket row
+      console.log(Object.values(res).toString());
     });
-    await parse_ticket(id);
+    promises.push(promise);
   }
-  MULTIBAR.stop();
+  Promise.all(promises).then(() => {
+    MULTIBAR.stop();
+  });
 }
 
 /**
@@ -131,7 +136,12 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
 async function get_ticket_transactions_history_data(ticket_id) {
   let transactions = [];
   let page = 1;
-  let progress = 1;
+
+  let bar2 = MULTIBAR.create(1, 0, 0, {
+    format:
+      colors.green("{bar}") +
+      " | {percentage}% | {message} | {value}/{total} | ETA: {eta_formatted} | Duration: {duration_formatted}",
+  });
 
   const get_ticket_history_page = async (page) => {
     return await axios
@@ -144,24 +154,33 @@ async function get_ticket_transactions_history_data(ticket_id) {
       });
   };
 
+  const update_bar = (transaction_id) => {
+    bar2.increment();
+    if (transaction_id) {
+      bar2.update({
+        message: `Ticket #${ticket_id} | Parsing transaction #${transaction_id}`,
+      });
+    }
+    if (bar2.getProgress() == 1) {
+      MULTIBAR.remove(bar2);
+    }
+  };
+
   const push_transaction = (transaction) => {
     transactions.push(transaction);
-    PROGRESS_BAR_2.update(progress++, {
-      message: `Parsing transaction #${transaction.id}`,
-    });
+    update_bar(transaction.id);
   };
 
   const ticket_history = await get_ticket_history_page(page);
-  PROGRESS_BAR_2.start(ticket_history.total, 0);
-  PROGRESS_BAR_2.update(0, { message: `Waiting on transaction data` });
+  bar2.start(ticket_history.total, 1);
   for (let i = 0; i < ticket_history.items.length; i++) {
     try {
       await parse_transaction(ticket_history.items[i].id).then((response) => {
         push_transaction(response);
       });
     } catch (err) {
-      //TODO: Put this in an error string
       // console.log(err);
+      update_bar();
     }
   }
 
@@ -177,8 +196,8 @@ async function get_ticket_transactions_history_data(ticket_id) {
             }
           );
         } catch (err) {
-          //TODO: Put this in an error string
           // console.log(err);
+          update_bar();
         }
       }
     }
@@ -207,14 +226,8 @@ async function parse_transaction(transaction_id) {
  * @param {Array} arr - The array of objects to be converted.
  * @return {string} - The CSV representation of the array of objects.
  */
-function convert_to_csv(arr) {
-  const array = [Object.keys(arr[0])].concat(arr);
-
-  return array
-    .map((it) => {
-      return Object.values(it).toString();
-    })
-    .join("\n");
+function convert_to_csv(obj) {
+  return Object.values(obj).toString();
 }
 
 /**
@@ -232,20 +245,30 @@ async function create_ticket_obj(
   ticket_queue,
   ticket_transactions_history_data
 ) {
-  const comments = await get_ticket_transactions_history_data_by_type(
-    ticket_transactions_history_data,
-    "Comment"
-  );
+  const comment_transactions =
+    await get_ticket_transactions_history_data_by_type(
+      ticket_transactions_history_data,
+      "Comment"
+    );
 
-  const correspondence = await get_ticket_transactions_history_data_by_type(
-    ticket_transactions_history_data,
-    "Correspond"
-  );
+  const create_transactions =
+    await get_ticket_transactions_history_data_by_type(
+      ticket_transactions_history_data,
+      "Create"
+    );
+
+  const correspond_transactions =
+    await get_ticket_transactions_history_data_by_type(
+      ticket_transactions_history_data,
+      "Correspond"
+    );
+
+  const correspondence = create_transactions.concat(correspond_transactions);
 
   return {
     id: ticket_data.EffectiveId.id,
-    all_other_correspondence: correspondence,
-    any_comment: comments,
+    all_other_correspondence: array_to_string(correspondence),
+    any_comment: array_to_string(comment_transactions),
     closed: ticket_data.Resolved,
     created: ticket_data.Created,
     customer: ticket_data.Creator.id,
@@ -260,7 +283,7 @@ async function create_ticket_obj(
       "Security Incident"
     ),
     status: ticket_data.Status,
-    subject: ticket_data.Subject,
+    subject: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
     tickettype: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "TicketType"
@@ -276,11 +299,9 @@ async function create_ticket_obj(
  * @return {string} - The value of the custom field, joined by commas if it contains multiple values.
  */
 function get_ticket_custom_field_value(custom_fields, field_name) {
-  return custom_fields
-    .find((obj) => {
-      return obj.name === field_name;
-    })
-    .values.join(", ");
+  return custom_fields.find((obj) => {
+    return obj.name === field_name;
+  }).values;
 }
 
 /**
@@ -303,9 +324,12 @@ async function get_ticket_transactions_history_data_by_type(
     const hyperlinks = transactions[i]._hyperlinks;
 
     /**debug */
-    // if (transaction_type === "Correspond") {
-    //   console.log("transaction id is" + transactions[i].id);
-    //   console.log("hi");
+    // if (
+    //   transaction_type === "Correspond" ||
+    //   transaction_type === "Create"
+    // ) {
+    // console.log("transaction id is" + transactions[i].id);
+    // console.log("hi");
     // }
     /**debug */
 
@@ -318,12 +342,13 @@ async function get_ticket_transactions_history_data_by_type(
         const response = await axios.get(hyperlink._url, REQUEST_HEADERS);
 
         /**debug only */
-        // if (transaction_type === "Correspond") {
-        //   console.log(hyperlink._url);
-        //   console.log(
-        //     response.data.Headers.includes("Content-Type: text/html")
-        //   );
-        //   console.log("id");
+        // if (transaction_type === "Correspond" || transaction_type === "Create") {
+        // console.log(hyperlink._url);
+        // console.log(transactions[i].Object.id);
+        // console.log(
+        //   is_content_type_text(response.data.Headers)
+        // );
+
         // }
         //*debug only*/
 
@@ -340,7 +365,11 @@ async function get_ticket_transactions_history_data_by_type(
       }
     }
   }
-  return '"' + JSON.stringify(return_transactions)?.replace(/['"]+/g, "") + '"';
+  return return_transactions;
+}
+
+function array_to_string(array) {
+  return '"' + JSON.stringify(array)?.replace(/['"]+/g, "") + '"';
 }
 
 /**

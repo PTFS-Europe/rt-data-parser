@@ -2,7 +2,7 @@
 
 Fetch data from [RT](https://github.com/bestpractical/rt) using [REST 2](https://docs.bestpractical.com/rt/5.0.5/RT/REST2.html) and parse it into a .csv file
 
-![demo](https://github.com/PTFS-Europe/rt-data-parser/blob/master/demo.jpg?raw=true)
+![demo](https://github.com/PTFS-Europe/rt-data-parser/blob/master/tickets.jpg?raw=true)
 
 # CLI Usage
 ```
