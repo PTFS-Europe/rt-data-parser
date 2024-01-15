@@ -1,9 +1,14 @@
 /** Imports */
-const axios = require("axios");
-const cliProgress = require("cli-progress");
-const colors = require("ansi-colors");
-const commander = require("commander");
+import axios from "axios";
+// const axios = require("axios");
+import cliProgress from "cli-progress";
+import colors from "ansi-colors";
+import { Command } from "commander";
+import he from "html-entities";
+import fs from "fs";
+import { strip_html_block } from"./lib/functions.js";
 
+const commander = new Command();
 /** Setup CLI args */
 const CLI_PARAMS = commander
   .requiredOption("-u, --username <username>", "RT account username")
@@ -48,8 +53,8 @@ const REQUEST_HEADERS = {
 const TOP_TICKET_ID = CLI_PARAMS.ticketId;
 const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
 const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
-
-let ticket_objs = [];
+const STREAM = fs.createWriteStream("error.txt", { flags: "a" });
+        STREAM.write("hi: \n");
 
 /** Main */
 get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS);
@@ -91,7 +96,7 @@ async function parse_ticket(ticket_id) {
     );
     return ticket_obj;
   } catch (error) {
-    //Couldnt fetch ticket ${ticket_id}
+    console.log(error);
   }
 }
 
@@ -113,15 +118,22 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
     "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,tickettype"
   );
 
+
   let promises = [];
   for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
     const promise = parse_ticket(id).then((res) => {
       PROGRESS_BAR_1.increment();
       //Output csv ticket row
-      console.log(Object.values(res).toString());
+      try {
+        console.log(Object.values(res).toString());
+      } catch (error) {
+        console.log(error);
+        STREAM.write("Ticket id: "+id + ": " + error + "\n");
+      }
     });
     promises.push(promise);
   }
+  STREAM.end();
   Promise.all(promises).then(() => {
     MULTIBAR.stop();
   });
@@ -179,7 +191,8 @@ async function get_ticket_transactions_history_data(ticket_id) {
         push_transaction(response);
       });
     } catch (err) {
-      // console.log(err);
+      console.log(err);
+      STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
       update_bar();
     }
   }
@@ -196,7 +209,8 @@ async function get_ticket_transactions_history_data(ticket_id) {
             }
           );
         } catch (err) {
-          // console.log(err);
+          console.log(err);
+          STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
           update_bar();
         }
       }
@@ -264,10 +278,16 @@ async function create_ticket_obj(
     );
 
   const correspondence = create_transactions.concat(correspond_transactions);
+  let correspondence_str = strip_html_block(
+    array_to_string(correspondence),
+    "blockquote"
+  );
+  correspondence_str = strip_html_block(correspondence_str, "html");
+  correspondence_str = he.decode(correspondence_str);
 
   return {
     id: ticket_data.EffectiveId.id,
-    all_other_correspondence: array_to_string(correspondence),
+    all_other_correspondence: correspondence_str,
     any_comment: array_to_string(comment_transactions),
     closed: ticket_data.Resolved,
     created: ticket_data.Created,
@@ -320,7 +340,7 @@ async function get_ticket_transactions_history_data_by_type(
   });
 
   let return_transactions = [];
-  for (i = 0; i < transactions.length; i++) {
+  for (let i = 0; i < transactions.length; i++) {
     const hyperlinks = transactions[i]._hyperlinks;
 
     /**debug */
@@ -333,7 +353,7 @@ async function get_ticket_transactions_history_data_by_type(
     // }
     /**debug */
 
-    for (j = 0; j < hyperlinks.length; j++) {
+    for (let j = 0; j < hyperlinks.length; j++) {
       const hyperlink = hyperlinks[j];
       if (hyperlink.ref !== "attachment") {
         continue;
@@ -361,7 +381,8 @@ async function get_ticket_transactions_history_data_by_type(
           return_transactions.push(obj);
         }
       } catch (error) {
-        // Handle error
+        console.log(err);
+        STREAM.write("Attachment id: " + hyperlinks[j].id + ": " + error + "\n"  );
       }
     }
   }
