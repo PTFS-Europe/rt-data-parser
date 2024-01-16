@@ -194,7 +194,9 @@ async function get_ticket_transactions_history_data(ticket_id) {
     } catch (err) {
       update_bar();
       STREAM.write(
-        "[ERROR]: Transaction id: " +
+        "[ERROR]: Ticket id: " +
+          ticket_id +
+          " | Transaction id: " +
           ticket_history.items[i].id +
           ": " +
           err +
@@ -217,7 +219,9 @@ async function get_ticket_transactions_history_data(ticket_id) {
         } catch (err) {
           update_bar();
           STREAM.write(
-            "[ERROR]: Transaction id: " +
+            "[ERROR]: Ticket id: " +
+              ticket_id +
+              " | Transaction id: " +
               ticket_history.items[i].id +
               ": " +
               err +
