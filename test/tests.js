@@ -1,4 +1,4 @@
-import { strip_html_block } from "../lib/functions.js";
+import { strip_html_block, convert_date } from "../lib/functions.js";
 import { expect } from "chai";
 
 describe("strip_html_block", () => {
@@ -47,4 +47,22 @@ describe("strip_html_block", () => {
     expect(strip_html_block(text, tag)).equal("");
   });
 
+});
+
+describe("convert_date", () => {
+  it("should return the correct formatted date", () => {
+    const date = "2022-01-01T00:00:00Z";
+    const expected = "01/01/2022 00:00:00";
+    const actual = convert_date(date);
+    expect(actual).equal(expected);
+  });
+
+  it("should return undefined when input date is undefined", () => {
+    const date = undefined;
+    const expected = undefined;
+    const actual = convert_date(date);
+    expect(actual).equal(expected);
+  });
+
+  // Add more test cases as needed
 });

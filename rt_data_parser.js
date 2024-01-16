@@ -6,7 +6,7 @@ import colors from "ansi-colors";
 import { Command } from "commander";
 import he from "html-entities";
 import fs from "fs";
-import { strip_html_block } from "./lib/functions.js";
+import { strip_html_block, convert_date } from "./lib/functions.js";
 
 const commander = new Command();
 /** Setup CLI args */
@@ -288,12 +288,12 @@ async function create_ticket_obj(
     id: ticket_data.EffectiveId.id,
     all_other_correspondence: correspondence_str,
     any_comment: array_to_string(comment_transactions),
-    closed: ticket_data.Resolved,
-    created: ticket_data.Created,
+    closed: convert_date(ticket_data.Resolved),
+    created: convert_date(ticket_data.Created),
     customer: ticket_data.Creator.id,
     customer_group: ticket_user.Organization,
-    first_correspondence: ticket_data.Started,
-    last_correspondence: ticket_data.Told,
+    first_correspondence: convert_date(ticket_data.Started),
+    last_correspondence: convert_date(ticket_data.Told),
     outcome: get_ticket_custom_field_value(ticket_data.CustomFields, "Outcome"),
     owner: ticket_data.Owner.id,
     queue: ticket_queue.Name,
@@ -373,7 +373,7 @@ async function get_ticket_transactions_history_data_by_type(
 
         if (is_content_type_text(response.data.Headers)) {
           const obj = {
-            created: response.data.Created,
+            created: convert_date(response.data.Created),
             creator: response.data.Creator.id,
             content: atob(response.data.Content.replace(/\n+/g, "")),
           };
