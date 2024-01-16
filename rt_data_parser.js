@@ -96,7 +96,7 @@ async function parse_ticket(ticket_id) {
     );
     return ticket_obj;
   } catch (error) {
-    console.log(error);
+    // console.log(error);
   }
 }
 
@@ -127,7 +127,7 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
       try {
         console.log(Object.values(res).toString());
       } catch (error) {
-        console.log(error);
+        // console.log(error);
         STREAM.write("Ticket id: "+id + ": " + error + "\n");
       }
     });
@@ -191,7 +191,7 @@ async function get_ticket_transactions_history_data(ticket_id) {
         push_transaction(response);
       });
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
       update_bar();
     }
@@ -209,7 +209,7 @@ async function get_ticket_transactions_history_data(ticket_id) {
             }
           );
         } catch (err) {
-          console.log(err);
+          // console.log(err);
           STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
           update_bar();
         }
@@ -381,7 +381,7 @@ async function get_ticket_transactions_history_data_by_type(
           return_transactions.push(obj);
         }
       } catch (error) {
-        console.log(err);
+        // console.log(err);
         STREAM.write("Attachment id: " + hyperlinks[j].id + ": " + error + "\n"  );
       }
     }
