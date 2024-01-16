@@ -6,7 +6,7 @@ import colors from "ansi-colors";
 import { Command } from "commander";
 import he from "html-entities";
 import fs from "fs";
-import { strip_html_block } from"./lib/functions.js";
+import { strip_html_block } from "./lib/functions.js";
 
 const commander = new Command();
 /** Setup CLI args */
@@ -53,8 +53,7 @@ const REQUEST_HEADERS = {
 const TOP_TICKET_ID = CLI_PARAMS.ticketId;
 const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
 const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
-const STREAM = fs.createWriteStream("error.txt", { flags: "a" });
-        STREAM.write("hi: \n");
+const STREAM = fs.createWriteStream("error.log", { flags: "a" });
 
 /** Main */
 get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS);
@@ -95,8 +94,8 @@ async function parse_ticket(ticket_id) {
       ticket_transactions_history_data
     );
     return ticket_obj;
-  } catch (error) {
-    // console.log(error);
+  } catch (err) {
+    STREAM.write("Ticket id: " + ticket_id + ": " + err + "\n");
   }
 }
 
@@ -118,7 +117,6 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
     "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,tickettype"
   );
 
-
   let promises = [];
   for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
     const promise = parse_ticket(id).then((res) => {
@@ -126,15 +124,14 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
       //Output csv ticket row
       try {
         console.log(Object.values(res).toString());
-      } catch (error) {
-        // console.log(error);
-        STREAM.write("Ticket id: "+id + ": " + error + "\n");
+      } catch (err) {
+        STREAM.write("Ticket id: " + id + ": " + err + "\n");
       }
     });
     promises.push(promise);
   }
-  STREAM.end();
   Promise.all(promises).then(() => {
+    STREAM.end();
     MULTIBAR.stop();
   });
 }
@@ -191,9 +188,10 @@ async function get_ticket_transactions_history_data(ticket_id) {
         push_transaction(response);
       });
     } catch (err) {
-      // console.log(err);
-      STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
       update_bar();
+      STREAM.write(
+        "Transaction id: " + ticket_history.items[i].id + ": " + err + "\n"
+      );
     }
   }
 
@@ -209,9 +207,10 @@ async function get_ticket_transactions_history_data(ticket_id) {
             }
           );
         } catch (err) {
-          // console.log(err);
-          STREAM.write("Transaction id: "+ticket_history.items[i].id + ": " + error + "\n");
           update_bar();
+          STREAM.write(
+            "Transaction id: " + ticket_history.items[i].id + ": " + err + "\n"
+          );
         }
       }
     }
@@ -380,9 +379,8 @@ async function get_ticket_transactions_history_data_by_type(
           };
           return_transactions.push(obj);
         }
-      } catch (error) {
-        // console.log(err);
-        STREAM.write("Attachment id: " + hyperlinks[j].id + ": " + error + "\n"  );
+      } catch (err) {
+        STREAM.write("Attachment id: " + hyperlink.id + ": " + err + "\n");
       }
     }
   }
