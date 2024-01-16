@@ -95,7 +95,7 @@ async function parse_ticket(ticket_id) {
     );
     return ticket_obj;
   } catch (err) {
-    STREAM.write("Ticket id: " + ticket_id + ": " + err + "\n");
+    STREAM.write("[ERROR]: Ticket id: " + ticket_id + ": " + err + "\n");
   }
 }
 
@@ -112,6 +112,10 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
     message: `Processing tickets...`,
   });
 
+  STREAM.write(
+    `[INFO]: Processing ${HOW_MANY_TICKETS} tickets from ticket id #${TOP_TICKET_ID} \n`
+  );
+
   //Output CSV header columns
   console.log(
     "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,tickettype"
@@ -125,7 +129,7 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
       try {
         console.log(Object.values(res).toString());
       } catch (err) {
-        STREAM.write("Ticket id: " + id + ": " + err + "\n");
+        STREAM.write("[ERROR]: Ticket id: " + id + ": " + err + "\n");
       }
     });
     promises.push(promise);
@@ -190,7 +194,11 @@ async function get_ticket_transactions_history_data(ticket_id) {
     } catch (err) {
       update_bar();
       STREAM.write(
-        "Transaction id: " + ticket_history.items[i].id + ": " + err + "\n"
+        "[ERROR]: Transaction id: " +
+          ticket_history.items[i].id +
+          ": " +
+          err +
+          "\n"
       );
     }
   }
@@ -209,7 +217,11 @@ async function get_ticket_transactions_history_data(ticket_id) {
         } catch (err) {
           update_bar();
           STREAM.write(
-            "Transaction id: " + ticket_history.items[i].id + ": " + err + "\n"
+            "[ERROR]: Transaction id: " +
+              ticket_history.items[i].id +
+              ": " +
+              err +
+              "\n"
           );
         }
       }
@@ -347,7 +359,9 @@ async function get_ticket_transactions_history_data_by_type(
           return_transactions.push(obj);
         }
       } catch (err) {
-        STREAM.write("Attachment id: " + hyperlink.id + ": " + err + "\n");
+        STREAM.write(
+          "[ERROR]: Attachment id: " + hyperlink.id + ": " + err + "\n"
+        );
       }
     }
   }
