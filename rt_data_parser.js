@@ -8,8 +8,8 @@ import he from "html-entities";
 import fs from "fs";
 import { strip_html_block, convert_date } from "./lib/functions.js";
 
-const commander = new Command();
 /** Setup CLI args */
+const commander = new Command();
 const CLI_PARAMS = commander
   .requiredOption("-u, --username <username>", "RT account username")
   .requiredOption("-p, --password <password>", "RT account password")
@@ -234,16 +234,6 @@ async function parse_transaction(transaction_id) {
 }
 
 /**
- * Converts an array of objects into a comma-separated values (CSV) format.
- *
- * @param {Array} arr - The array of objects to be converted.
- * @return {string} - The CSV representation of the array of objects.
- */
-function convert_to_csv(obj) {
-  return Object.values(obj).toString();
-}
-
-/**
  * Creates a ticket object based on the provided ticket data, user information, queue, and transaction history.
  *
  * @param {object} ticket_data - The data of the ticket.
@@ -341,17 +331,6 @@ async function get_ticket_transactions_history_data_by_type(
   let return_transactions = [];
   for (let i = 0; i < transactions.length; i++) {
     const hyperlinks = transactions[i]._hyperlinks;
-
-    /**debug */
-    // if (
-    //   transaction_type === "Correspond" ||
-    //   transaction_type === "Create"
-    // ) {
-    // console.log("transaction id is" + transactions[i].id);
-    // console.log("hi");
-    // }
-    /**debug */
-
     for (let j = 0; j < hyperlinks.length; j++) {
       const hyperlink = hyperlinks[j];
       if (hyperlink.ref !== "attachment") {
@@ -359,18 +338,6 @@ async function get_ticket_transactions_history_data_by_type(
       }
       try {
         const response = await axios.get(hyperlink._url, REQUEST_HEADERS);
-
-        /**debug only */
-        // if (transaction_type === "Correspond" || transaction_type === "Create") {
-        // console.log(hyperlink._url);
-        // console.log(transactions[i].Object.id);
-        // console.log(
-        //   is_content_type_text(response.data.Headers)
-        // );
-
-        // }
-        //*debug only*/
-
         if (is_content_type_text(response.data.Headers)) {
           const obj = {
             created: convert_date(response.data.Created),
