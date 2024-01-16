@@ -284,7 +284,6 @@ async function create_ticket_obj(
     "blockquote"
   );
   correspondence_str = strip_html_block(correspondence_str, "html");
-  correspondence_str = he.decode(correspondence_str);
 
   return {
     id: ticket_data.EffectiveId.id,
@@ -369,7 +368,7 @@ async function get_ticket_transactions_history_data_by_type(
 }
 
 function array_to_string(array) {
-  return '"' + JSON.stringify(array)?.replace(/['"]+/g, "") + '"';
+  return '"' + he.decode(JSON.stringify(array))?.replace(/['"]+/g, "") + '"';
 }
 
 /**
