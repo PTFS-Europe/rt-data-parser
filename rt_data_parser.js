@@ -162,7 +162,7 @@ async function get_ticket_transactions_history_data(ticket_id) {
   const get_ticket_history_page = async (page) => {
     return await axios
       .get(
-        `${RT_API_URL}/ticket/${ticket_id}/history?page=${page}`,
+        `${RT_API_URL}/transactions?page=${page}&query=[ { "field": "Type", "operator": "=", "value": "Comment" }, { "field": "Type", "operator": "=", "value": "Correspond" }, { "field": "Type", "operator": "=", "value": "Create" }, { "field": "ObjectId", "operator": "=", "value": ${ticket_id} } ]`,
         REQUEST_HEADERS
       )
       .then((response) => {
