@@ -1,4 +1,8 @@
-import { strip_html_block, convert_date } from "../lib/functions.js";
+import {
+  strip_html_block,
+  convert_date,
+  strip_html_tags,
+} from "../lib/functions.js";
 import { expect } from "chai";
 
 describe("strip_html_block", () => {
@@ -46,7 +50,6 @@ describe("strip_html_block", () => {
     const tag = "p";
     expect(strip_html_block(text, tag)).equal("");
   });
-
 });
 
 describe("convert_date", () => {
@@ -65,4 +68,47 @@ describe("convert_date", () => {
   });
 
   // Add more test cases as needed
+});
+
+describe("strip_html_tags", () => {
+  it("should remove <p> tags from the text", () => {
+    const input = "<p>Hello, world!</p>";
+    const expected = "Hello, world!";
+    const result = strip_html_tags(input);
+    expect(result).equal(expected);
+  });
+
+  it("should remove <br /> tags from the text", () => {
+    const input = "Hello<br />world!";
+    const expected = "Helloworld!";
+    const result = strip_html_tags(input);
+    expect(result).equal(expected);
+  });
+
+  it("should remove <strong> tags from the text", () => {
+    const input = "<strong>Hello, world!</strong>";
+    const expected = "Hello, world!";
+    const result = strip_html_tags(input);
+    expect(result).equal(expected);
+  });
+
+  it("should remove multiple tags from the text", () => {
+    const input = "<p><strong>Hello</strong>, <br />world!</p>";
+    const expected = "Hello, world!";
+    const result = strip_html_tags(input);
+    expect(result).equal(expected);
+  });
+
+  it("should return the input text if no tags are present", () => {
+    const input = "Hello, world!";
+    const expected = "Hello, world!";
+    const result = strip_html_tags(input);
+    expect(result).equal(expected);
+  });
+
+  it("should return input string if input falsely", () => {
+    const input = null;
+    const result = strip_html_tags(input);
+    expect(result).equal(input);
+  });
 });

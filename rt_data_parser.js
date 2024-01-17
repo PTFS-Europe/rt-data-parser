@@ -1,12 +1,15 @@
 /** Imports */
 import axios from "axios";
-// const axios = require("axios");
 import cliProgress from "cli-progress";
 import colors from "ansi-colors";
 import { Command } from "commander";
 import he from "html-entities";
 import fs from "fs";
-import { strip_html_block, convert_date } from "./lib/functions.js";
+import {
+  strip_html_block,
+  convert_date,
+  strip_html_tags,
+} from "./lib/functions.js";
 
 /** Setup CLI args */
 const commander = new Command();
@@ -289,10 +292,14 @@ async function create_ticket_obj(
   );
   correspondence_str = strip_html_block(correspondence_str, "html");
 
+  correspondence_str = strip_html_tags(correspondence_str);
+
+  let comments_str = strip_html_tags(array_to_string(comment_transactions));
+
   return {
     id: ticket_data.EffectiveId.id,
     all_other_correspondence: correspondence_str,
-    any_comment: array_to_string(comment_transactions),
+    any_comment: comments_str,
     closed: convert_date(ticket_data.Resolved),
     created: convert_date(ticket_data.Created),
     customer: ticket_data.Creator.id,
