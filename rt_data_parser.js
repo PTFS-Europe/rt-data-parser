@@ -121,7 +121,7 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
 
   //Output CSV header columns
   console.log(
-    "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,tickettype"
+    "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,sla,tickettype"
   );
 
   let promises = [];
@@ -315,6 +315,7 @@ async function create_ticket_obj(
     ),
     status: ticket_data.Status,
     subject: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
+    sla: '"' + ticket_data.SLA.replace(/"/g, '\\"') + '"',
     tickettype: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "TicketType"
