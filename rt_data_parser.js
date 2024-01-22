@@ -121,7 +121,7 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
 
   //Output CSV header columns
   console.log(
-    "id,all_other_correspondence,any_comment,closed,created,customer,customer_group,first_correspondence,last_correspondence,outcome,owner,queue,security_incident,status,subject,sla,tickettype"
+    "id,first_correspondence,all_other_correspondence,any_comment,closed,created,customer,customer_group,last_correspondence,outcome,owner,queue,security_incident,status,subject,sla,tickettype"
   );
 
   let promises = [];
@@ -279,15 +279,22 @@ async function create_ticket_obj(
       "Create"
     );
 
+  let first_correspondence_str = strip_html_block(
+    array_to_string(create_transactions),
+    "blockquote"
+  );
+  first_correspondence_str = strip_html_block(first_correspondence_str, "html");
+
+  first_correspondence_str = strip_html_tags(first_correspondence_str);
+
   const correspond_transactions =
     await get_ticket_transactions_history_data_by_type(
       ticket_transactions_history_data,
       "Correspond"
     );
 
-  const correspondence = create_transactions.concat(correspond_transactions);
   let correspondence_str = strip_html_block(
-    array_to_string(correspondence),
+    array_to_string(correspond_transactions),
     "blockquote"
   );
   correspondence_str = strip_html_block(correspondence_str, "html");
@@ -298,13 +305,13 @@ async function create_ticket_obj(
 
   return {
     id: ticket_data.EffectiveId.id,
+    first_correspondence: first_correspondence_str,
     all_other_correspondence: correspondence_str,
     any_comment: comments_str,
     closed: convert_date(ticket_data.Resolved),
     created: convert_date(ticket_data.Created),
     customer: ticket_data.Creator.id,
     customer_group: ticket_user.Organization,
-    first_correspondence: convert_date(ticket_data.Started),
     last_correspondence: convert_date(ticket_data.Told),
     outcome: get_ticket_custom_field_value(ticket_data.CustomFields, "Outcome"),
     owner: ticket_data.Owner.id,
