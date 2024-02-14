@@ -387,7 +387,16 @@ async function get_ticket_transactions_history_data_by_type(
 }
 
 function array_to_string(array) {
-  return '"' + he.decode(JSON.stringify(array))?.replace(/['"]+/g, "") + '"';
+  return (
+    '"' +
+    he
+      .decode(JSON.stringify(array))
+      ?.replace(/['"]+/g, "")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t") +
+    '"'
+  );
 }
 
 /**
