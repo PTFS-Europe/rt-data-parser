@@ -317,7 +317,6 @@ async function create_ticket_obj(
       ticket_data.CustomFields,
       "Outcome"
     ),
-    // owner: ticket_data.Owner.id, "Assigned User": 25, //This is supposed to 25='david' but openCRM seems to set this to the user doing the data import
     [column_headings[6]]: "Support",
     [column_headings[7]]: ticket_queue.Name,
     [column_headings[8]]: "--Please Select--",
@@ -339,6 +338,7 @@ async function create_ticket_obj(
       ticket_data.CustomFields,
       "TicketType"
     ),
+    [column_headings[15]]: "David",
   };
 }
 
@@ -442,6 +442,7 @@ function get_column_headings() {
     "Title",
     "Severity",
     "Type",
+    "Assigned User"
   ];
 }
 
