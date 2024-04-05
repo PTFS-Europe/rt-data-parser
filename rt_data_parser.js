@@ -283,7 +283,7 @@ async function create_ticket_obj(
   );
   first_correspondence_str = strip_html_block(first_correspondence_str, "html");
 
-  first_correspondence_str = strip_html_tags(first_correspondence_str);
+  // first_correspondence_str = strip_html_tags(first_correspondence_str);
 
   const correspond_transactions =
     await get_ticket_transactions_history_data_by_type(
@@ -297,7 +297,7 @@ async function create_ticket_obj(
   );
   correspondence_str = strip_html_block(correspondence_str, "html");
 
-  correspondence_str = strip_html_tags(correspondence_str);
+  // correspondence_str = strip_html_tags(correspondence_str);
 
   let comments_str = strip_html_tags(array_to_string(comment_transactions));
 
