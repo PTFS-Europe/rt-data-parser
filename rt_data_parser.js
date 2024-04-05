@@ -338,7 +338,7 @@ async function create_ticket_obj(
       ticket_data.CustomFields,
       "TicketType"
     ),
-    [column_headings[15]]: "David",
+    [column_headings[15]]: get_user_mapping_value(ticket_data.Owner.id)
   };
 }
 
@@ -459,4 +459,40 @@ function get_severity_mapping_value(rt_sla) {
   };
 
   return mapping[rt_sla];
+}
+
+/**
+ * Returns the value from the mapping corresponding to the given user.
+ *
+ * @param {string} rt_user - The user for whom the mapping value is to be retrieved
+ * @return {string|number} The value from the mapping for the given user
+ */
+function get_user_mapping_value(rt_user) {
+  let mapping = {
+    'alexander': 'Alexander',
+    'andrew': 'Andrew',
+    'aude': 'Aude',
+    'bernard': 'Bernard',
+    'david': 'David',
+    'fiona': 'Fiona',
+    'helen': 'Helen',
+    'jacob': 'Jacob',
+    'jake': 'Jake',
+    'janet': 'Janet',
+    'jonathan': 'Jonathan',
+    'lucy': 'Lucy',
+    'martin': 'Martin',
+    'matt': 'Matt',
+    'nason': 'Nason',
+    'Nobody': 1,
+    'pedro': 'Pedro',
+    'rachel': 'Rachel',
+    'rasa': 'Rasa',
+    'ryan': 'Ryan',
+    'sam': 'Sam',
+    'steven': 'Steven',
+    'val': 'Val',
+  };
+
+  return mapping[rt_user];
 }
