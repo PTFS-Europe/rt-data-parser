@@ -338,7 +338,8 @@ async function create_ticket_obj(
       ticket_data.CustomFields,
       "TicketType"
     ),
-    [column_headings[15]]: get_user_mapping_value(ticket_data.Owner.id)
+    [column_headings[15]]: get_user_mapping_value(ticket_data.Owner.id),
+    [column_headings[16]]: ticket_user.Organization
   };
 }
 
@@ -433,7 +434,7 @@ function get_column_headings() {
     "Closed On (Date)",
     "Last Action Date",
     "Outcome",
-    "Queue",
+    "Support Queue",
     "System",
     "Component",
     "Related To",
@@ -442,7 +443,8 @@ function get_column_headings() {
     "Title",
     "Severity",
     "Type",
-    "Assigned User"
+    "Assigned User",
+    "Customer Code HD"
   ];
 }
 
