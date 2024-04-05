@@ -120,9 +120,7 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
   );
 
   //Output CSV header columns
-  console.log(
-    "id,first_correspondence,all_other_correspondence,any_comment,closed,created,customer,customer_group,last_correspondence,outcome,owner,queue,security_incident,status,subject,sla,tickettype"
-  );
+  console.log(get_column_headings().join(","));
 
   let promises = [];
   for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
@@ -303,27 +301,41 @@ async function create_ticket_obj(
 
   let comments_str = strip_html_tags(array_to_string(comment_transactions));
 
+  let column_headings = get_column_headings();
   return {
-    id: ticket_data.EffectiveId.id,
-    first_correspondence: first_correspondence_str,
-    all_other_correspondence: correspondence_str,
-    any_comment: comments_str,
-    closed: convert_date(ticket_data.Resolved),
-    created: convert_date(ticket_data.Created),
-    customer: ticket_data.Creator.id,
-    customer_group: ticket_user.Organization,
-    last_correspondence: convert_date(ticket_data.Told),
-    outcome: get_ticket_custom_field_value(ticket_data.CustomFields, "Outcome"),
-    owner: ticket_data.Owner.id,
-    queue: ticket_queue.Name,
-    security_incident: get_ticket_custom_field_value(
+    [column_headings[0]]: ticket_data.EffectiveId.id,
+    [column_headings[1]]: 13018,
+    [column_headings[2]]:
+      '"' + first_correspondence_str + correspondence_str + '"',
+    // any_comment: comments_str, #no mapping yet
+    [column_headings[3]]: convert_date(ticket_data.Resolved),
+    // created: convert_date(ticket_data.Created), #this doesnt seem to be working, openCRM sets this to time of import
+    // customer: ticket_data.Creator.id,
+    // customer_group: ticket_user.Organization,
+    [column_headings[4]]: convert_date(ticket_data.Resolved),
+    [column_headings[5]]: get_ticket_custom_field_value(
+      ticket_data.CustomFields,
+      "Outcome"
+    ),
+    // owner: ticket_data.Owner.id, "Assigned User": 25, //This is supposed to 25='david' but openCRM seems to set this to the user doing the data import
+    [column_headings[6]]: "Support",
+    [column_headings[7]]: ticket_queue.Name,
+    [column_headings[8]]: "--Please Select--",
+    [column_headings[9]]: 334,
+
+    [column_headings[10]]: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "Security Incident"
-    ),
-    status: ticket_data.Status,
-    subject: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
-    sla: '"' + ticket_data.SLA.replace(/"/g, '\\"') + '"',
-    tickettype: get_ticket_custom_field_value(
+    ).length
+      ? "Yes"
+      : "No",
+    [column_headings[11]]: "Archived", //This is hardcoded, if not: ticket_data.Status,
+    [column_headings[12]]: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
+    [column_headings[13]]:
+      '"' +
+      get_severity_mapping_value(ticket_data.SLA.replace(/"/g, '\\"')) +
+      '"',
+    [column_headings[14]]: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "TicketType"
     ),
@@ -387,16 +399,12 @@ async function get_ticket_transactions_history_data_by_type(
 }
 
 function array_to_string(array) {
-  return (
-    '"' +
-    he
-      .decode(JSON.stringify(array))
-      ?.replace(/['"]+/g, "")
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\r")
-      .replace(/\\t/g, "\t") +
-    '"'
-  );
+  return he
+    .decode(JSON.stringify(array))
+    ?.replace(/['"]+/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t");
 }
 
 /**
@@ -410,4 +418,44 @@ function is_content_type_text(response_headers) {
     response_headers.toLowerCase().includes("content-type: text/html") ||
     response_headers.toLowerCase().includes("content-type: text/plain")
   );
+}
+
+/**
+ * Retrieves the column headings for a data table.
+ *
+ * @return {Array} Array of column headings
+ */
+function get_column_headings() {
+  return [
+    "External ID",
+    "Contact ID",
+    "Description",
+    "Closed On (Date)",
+    "Last Action Date",
+    "Outcome",
+    "Queue",
+    "System",
+    "Component",
+    "Related To",
+    "Security Incident",
+    "Status",
+    "Title",
+    "Severity",
+    "Type",
+  ];
+}
+
+/**
+ * Retrieves the severity mapping values.
+ *
+ * @return {Array} Array of severity mapping values
+ */
+function get_severity_mapping_value(rt_sla) {
+    let mapping = {
+    'Minor':'P3. Minor',
+    'Moderate': 'P2. Major',
+    'Severe': 'P1. Critical',
+  };
+
+  return mapping[rt_sla];
 }
