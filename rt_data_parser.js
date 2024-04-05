@@ -322,12 +322,16 @@ async function create_ticket_obj(
     [column_headings[8]]: "--Please Select--",
     [column_headings[9]]: 334,
 
-    [column_headings[10]]: get_ticket_custom_field_value(
-      ticket_data.CustomFields,
-      "Security Incident"
-    ).length
-      ? "Yes"
-      : "No",
+    [column_headings[10]]:
+      get_ticket_custom_field_value(
+        ticket_data.CustomFields,
+        "Security Incident"
+      ).length == 0
+        ? "No"
+        : get_ticket_custom_field_value(
+            ticket_data.CustomFields,
+            "Security Incident"
+          )[0],
     [column_headings[11]]: "Archived", //This is hardcoded, if not: ticket_data.Status,
     [column_headings[12]]: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
     [column_headings[13]]:
