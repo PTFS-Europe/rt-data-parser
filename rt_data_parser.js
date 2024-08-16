@@ -3,6 +3,7 @@ import axios from "axios";
 import cliProgress from "cli-progress";
 import colors from "ansi-colors";
 import { Command } from "commander";
+import inquirer from "inquirer";
 import he from "html-entities";
 import fs from "fs";
 import {
@@ -15,7 +16,7 @@ import {
 const commander = new Command();
 const CLI_PARAMS = commander
   .requiredOption("-u, --username <username>", "RT account username")
-  .requiredOption("-p, --password <password>", "RT account password")
+  .requiredOption("-o, --output_file <output_file>", "CSV outputfile")
   .requiredOption(
     "-h, --host <host>",
     "RT host URL, e.g. http://localhost:8080"
@@ -31,6 +32,30 @@ const CLI_PARAMS = commander
   .parse()
   .opts();
 
+/** Setup constants */
+let REQUEST_HEADERS = {
+  auth: {
+    username: CLI_PARAMS.username,
+  },
+};
+const OUTPUT_FILE = CLI_PARAMS.output_file;
+const TOP_TICKET_ID = CLI_PARAMS.ticketId;
+const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
+const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
+const STREAM = fs.createWriteStream("error.log", { flags: "a" });
+
+const password_input = [
+  {
+    type: "password",
+    name: "password",
+    message: "Enter password for user "+CLI_PARAMS.username+" at "+CLI_PARAMS.host+":",
+  },
+];
+
+await inquirer.prompt(password_input).then((answers) => {
+  REQUEST_HEADERS.auth.password = answers.password;
+});
+
 /** Setup progress bars */
 const MULTIBAR = new cliProgress.MultiBar(
   {
@@ -45,18 +70,6 @@ const MULTIBAR = new cliProgress.MultiBar(
 );
 
 const PROGRESS_BAR_1 = MULTIBAR.create(1, 0);
-
-/** Setup constants */
-const REQUEST_HEADERS = {
-  auth: {
-    username: CLI_PARAMS.username,
-    password: CLI_PARAMS.password,
-  },
-};
-const TOP_TICKET_ID = CLI_PARAMS.ticketId;
-const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
-const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
-const STREAM = fs.createWriteStream("error.log", { flags: "a" });
 
 /** Main */
 get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS);
@@ -98,6 +111,9 @@ async function parse_ticket(ticket_id) {
     );
     return ticket_obj;
   } catch (err) {
+    if (err.response.status === 401) {
+      console.log('ERROR: '+err.response.status+' '+err.response.statusText);
+    }
     STREAM.write("[ERROR]: Ticket id: " + ticket_id + ": " + err + "\n");
   }
 }
@@ -120,7 +136,14 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
   );
 
   //Output CSV header columns
-  console.log(get_column_headings().join(","));
+  const headings_content = get_column_headings().join(",");
+  fs.writeFile(OUTPUT_FILE, headings_content, (err) => {
+    if (err) {
+      console.error(err);
+    } else {
+      // file written successfully
+    }
+  });
 
   let promises = [];
   for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
@@ -128,7 +151,14 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
       PROGRESS_BAR_1.increment();
       //Output csv ticket row
       try {
-        console.log(Object.values(res).toString());
+        const row_data = "\n"+Object.values(res).toString();
+        fs.appendFile(OUTPUT_FILE, row_data, (err) => {
+          if (err) {
+            console.error(err);
+          } else {
+            // file written successfully
+          }
+        });
       } catch (err) {
         STREAM.write("[ERROR]: Ticket id: " + id + ": " + err + "\n");
       }
@@ -433,6 +463,7 @@ function is_content_type_text(response_headers) {
  */
 function get_column_headings() {
   return [
+    "Imported Ticket ID",
     "External ID",
     "Contact ID",
     "Description",
@@ -449,7 +480,7 @@ function get_column_headings() {
     "Severity",
     "Type",
     "Assigned User",
-    "Customer Code HD"
+    "Customer Code HD",
   ];
 }
 
