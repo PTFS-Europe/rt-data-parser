@@ -304,25 +304,26 @@ async function create_ticket_obj(
   let column_headings = get_column_headings();
   return {
     [column_headings[0]]: ticket_data.EffectiveId.id,
-    [column_headings[1]]: 13018,
-    [column_headings[2]]:
+    [column_headings[1]]: ticket_data.EffectiveId.id,
+    [column_headings[2]]: 13018,
+    [column_headings[3]]:
       '"' + first_correspondence_str + correspondence_str + '"',
     // any_comment: comments_str, #no mapping yet
-    [column_headings[3]]: convert_date(ticket_data.Resolved),
+    [column_headings[4]]: convert_date(ticket_data.Resolved),
     // created: convert_date(ticket_data.Created), #this doesnt seem to be working, openCRM sets this to time of import
     // customer: ticket_data.Creator.id,
     // customer_group: ticket_user.Organization,
-    [column_headings[4]]: convert_date(ticket_data.Resolved),
-    [column_headings[5]]: get_ticket_custom_field_value(
+    [column_headings[5]]: convert_date(ticket_data.Resolved),
+    [column_headings[6]]: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "Outcome"
     ),
-    [column_headings[6]]: "Support",
-    [column_headings[7]]: ticket_queue.Name,
-    [column_headings[8]]: "--Please Select--",
-    [column_headings[9]]: 334,
+    [column_headings[7]]: "Support",
+    [column_headings[8]]: ticket_queue.Name,
+    [column_headings[9]]: "--Please Select--",
+    [column_headings[10]]: 334,
 
-    [column_headings[10]]:
+    [column_headings[11]]:
       get_ticket_custom_field_value(
         ticket_data.CustomFields,
         "Security Incident"
@@ -332,18 +333,18 @@ async function create_ticket_obj(
             ticket_data.CustomFields,
             "Security Incident"
           )[0],
-    [column_headings[11]]: "Archived", //This is hardcoded, if not: ticket_data.Status,
-    [column_headings[12]]: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
-    [column_headings[13]]:
+    [column_headings[12]]: "Archived", //This is hardcoded, if not: ticket_data.Status,
+    [column_headings[13]]: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
+    [column_headings[14]]:
       '"' +
       get_severity_mapping_value(ticket_data.SLA.replace(/"/g, '\\"')) +
       '"',
-    [column_headings[14]]: get_ticket_custom_field_value(
+    [column_headings[15]]: get_ticket_custom_field_value(
       ticket_data.CustomFields,
       "TicketType"
     ),
-    [column_headings[15]]: get_user_mapping_value(ticket_data.Owner.id),
-    [column_headings[16]]: ticket_user.Organization
+    [column_headings[16]]: get_user_mapping_value(ticket_data.Owner.id),
+    [column_headings[17]]: ticket_user.Organization,
   };
 }
 
