@@ -29,6 +29,10 @@ const CLI_PARAMS = commander
     "-n, --numbers <numbers>",
     "How many tickets to parse, from --ticket-id downards"
   )
+  .option(
+    "-g, --customer_group <customer_group>",
+    "Optional, the customer group RT ID to export data for."
+  )
   .parse()
   .opts();
 
@@ -39,8 +43,9 @@ let REQUEST_HEADERS = {
   },
 };
 const OUTPUT_FILE = CLI_PARAMS.output_file;
+const CUSTOMER_GROUP = CLI_PARAMS.customer_group;
 const TOP_TICKET_ID = CLI_PARAMS.ticketId;
-const HOW_MANY_TICKETS = CLI_PARAMS.numbers;
+let HOW_MANY_TICKETS = CLI_PARAMS.numbers;
 const RT_API_URL = `${CLI_PARAMS.host}/REST/2.0`;
 const STREAM = fs.createWriteStream("error.log", { flags: "a" });
 
@@ -118,40 +123,38 @@ async function parse_ticket(ticket_id) {
   }
 }
 
-/**
- * Retrieves ticket data for a specified range of ticket IDs.
- *
- * @param {number} TOP_TICKET_ID - The highest ticket ID in the range.
- * @param {number} HOW_MANY_TICKETS - The number of tickets to retrieve.
- * @return {Promise<void>} - Resolves when all ticket data has been retrieved.
- */
-async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
-  PROGRESS_BAR_1.start(HOW_MANY_TICKETS, 0);
-  PROGRESS_BAR_1.update({
-    message: `Processing tickets...`,
-  });
+async function get_customer_group_data() {
+  return await axios
+    .get(
+      `${RT_API_URL}/tickets?page=1&per_page=2&query=requestor=${CUSTOMER_GROUP}`,
+      REQUEST_HEADERS
+    )
+    .then((response) => {
+      return response.data;
+    });
+}
 
-  STREAM.write(
-    `[INFO]: Processing ${HOW_MANY_TICKETS} tickets from ticket id #${TOP_TICKET_ID} \n`
-  );
+async function process_customer_group_page(args) {
 
-  //Output CSV header columns
-  const headings_content = get_column_headings().join(",");
-  fs.writeFile(OUTPUT_FILE, headings_content, (err) => {
-    if (err) {
-      console.error(err);
-    } else {
-      // file written successfully
-    }
-  });
 
-  let promises = [];
-  for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
-    const promise = parse_ticket(id).then((res) => {
+  let cg_data;
+  if(!args.cg_data && args.next_page) {
+      cg_data = await axios
+        .get(args.next_page, REQUEST_HEADERS)
+        .then((response) => {
+          return response.data;
+        });
+  }else{
+    cg_data = args.cg_data;
+  }
+  
+  let cg_promises = [];
+  cg_data.items.forEach((ticket) => {
+    const promise = parse_ticket(ticket.id).then((res) => {
       PROGRESS_BAR_1.increment();
       //Output csv ticket row
       try {
-        const row_data = "\n"+Object.values(res).toString();
+        const row_data = "\n" + Object.values(res).toString();
         fs.appendFile(OUTPUT_FILE, row_data, (err) => {
           if (err) {
             console.error(err);
@@ -163,12 +166,83 @@ async function get_tickets_data(TOP_TICKET_ID, HOW_MANY_TICKETS) {
         STREAM.write("[ERROR]: Ticket id: " + id + ": " + err + "\n");
       }
     });
-    promises.push(promise);
-  }
-  Promise.all(promises).then(() => {
-    STREAM.end();
-    MULTIBAR.stop();
+    cg_promises.push(promise);
   });
+  Promise.all(cg_promises).then(() => {
+    if (cg_data.next_page) {
+      process_customer_group_page({next_page: cg_data.next_page});
+    }else{
+      STREAM.end();
+      MULTIBAR.stop();
+    }
+  });
+}
+
+/**
+ * Retrieves ticket data for a specified range of ticket IDs.
+ *
+ * @return {Promise<void>} - Resolves when all ticket data has been retrieved.
+ */
+async function get_tickets_data() {
+
+  if(CUSTOMER_GROUP){
+    
+    const cg_data = await get_customer_group_data();
+    HOW_MANY_TICKETS = cg_data.total;
+
+    PROGRESS_BAR_1.start(HOW_MANY_TICKETS, 0);
+    PROGRESS_BAR_1.update({
+      message: `Processing tickets...`,
+    });
+
+    await process_customer_group_page({cg_data: cg_data});
+
+  }else{
+    
+    PROGRESS_BAR_1.start(HOW_MANY_TICKETS, 0);
+    PROGRESS_BAR_1.update({
+      message: `Processing tickets...`,
+    });
+
+    STREAM.write(
+      `[INFO]: Processing ${HOW_MANY_TICKETS} tickets from ticket id #${TOP_TICKET_ID} \n`
+    );
+
+    //Output CSV header columns
+    const headings_content = get_column_headings().join(",");
+    fs.writeFile(OUTPUT_FILE, headings_content, (err) => {
+      if (err) {
+        console.error(err);
+      } else {
+        // file written successfully
+      }
+    });
+
+    let promises = [];
+    for (let id = TOP_TICKET_ID; id > TOP_TICKET_ID - HOW_MANY_TICKETS; id--) {
+      const promise = parse_ticket(id).then((res) => {
+        PROGRESS_BAR_1.increment();
+        //Output csv ticket row
+        try {
+          const row_data = "\n" + Object.values(res).toString();
+          fs.appendFile(OUTPUT_FILE, row_data, (err) => {
+            if (err) {
+              console.error(err);
+            } else {
+              // file written successfully
+            }
+          });
+        } catch (err) {
+          STREAM.write("[ERROR]: Ticket id: " + id + ": " + err + "\n");
+        }
+      });
+      promises.push(promise);
+    }
+    Promise.all(promises).then(() => {
+      STREAM.end();
+      MULTIBAR.stop();
+    });
+  }
 }
 
 /**
