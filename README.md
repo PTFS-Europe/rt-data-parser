@@ -11,13 +11,13 @@ yarn install
 
 ## CLI Usage
 ```
-node rt_data_parser.js -u ${RT_USER} -p ${RT_PASS} -h ${RT_HOST} -i ${TICKET_ID} -n ${NUMBER} > data.csv
+node rt_data_parser.js -u ${RT_USER} -o ${CSV_OUTPUT_FILE} -h ${RT_HOST} -i ${TICKET_ID} -n ${NUMBER}
 ```
 
 ### Example
 Parse ticket #49504 and 20 tickets below that, down to ticket #49484
 ```
-node rt_data_parser.js -u user -p pass -h https://helpdesk.yoursite.com -i 49504 -n 20 > data.csv
+node rt_data_parser.js -u user -o data.csv -h https://helpdesk.yoursite.com -i 49504 -n 20
 ```
 
 ## Error logging
