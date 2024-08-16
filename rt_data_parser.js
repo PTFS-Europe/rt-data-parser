@@ -21,11 +21,11 @@ const CLI_PARAMS = commander
     "-h, --host <host>",
     "RT host URL, e.g. http://localhost:8080"
   )
-  .requiredOption(
+  .option(
     "-i, --ticket-id <ticket_id>",
     "Top-most RT ticket id to parse"
   )
-  .requiredOption(
+  .option(
     "-n, --numbers <numbers>",
     "How many tickets to parse, from --ticket-id downards"
   )
@@ -126,7 +126,7 @@ async function parse_ticket(ticket_id) {
 async function get_customer_group_data() {
   return await axios
     .get(
-      `${RT_API_URL}/tickets?page=1&per_page=2&query=requestor=${CUSTOMER_GROUP}`,
+      `${RT_API_URL}/tickets?page=1&per_page=20&query=requestor=${CUSTOMER_GROUP}`,
       REQUEST_HEADERS
     )
     .then((response) => {
