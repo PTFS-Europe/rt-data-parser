@@ -163,7 +163,7 @@ async function process_customer_group_page(args) {
           }
         });
       } catch (err) {
-        STREAM.write("[ERROR]: Ticket id: " + id + ": " + err + "\n");
+        STREAM.write("[ERROR]: Ticket id: " + ticket.id + ": " + err + "\n");
       }
     });
     cg_promises.push(promise);
