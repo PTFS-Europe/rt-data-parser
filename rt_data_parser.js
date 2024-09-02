@@ -494,7 +494,9 @@ async function get_ticket_transactions_history_data_by_type(
           const obj = {
             created: convert_date(response.data.Created),
             creator: response.data.Creator.id,
-            content: atob(response.data.Content.replace(/\n+/g, "")),
+            content: atob(
+              response.data.Content.replace(/\n+/g, "").replace(/['"]+/g, "")
+            ),
           };
           return_transactions.push(obj);
         }
@@ -511,10 +513,10 @@ async function get_ticket_transactions_history_data_by_type(
 function array_to_string(array) {
 
   array = array.map((member) => {
+    let decoded = he.decode(JSON.stringify(member));
     return (
       '"' +
-      he
-        .decode(JSON.stringify(member)?.replace(/['"]+/g, ""))
+      decoded.replace(/['"]+/g, "")
         .replace(/\\n/g, "\n")
         .replace(/\\r/g, "\r")
         .replace(/\\t/g, "\t") +
