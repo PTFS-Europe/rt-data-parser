@@ -447,8 +447,8 @@ async function create_ticket_obj(
     ),
     [column_headings[15]]: get_user_mapping_value(ticket_data.Owner.id),
     [column_headings[16]]: ticket_user.Organization,
-    [column_headings[17]]:
-      '"' + first_correspondence_str + correspondence_str + '"',
+    [column_headings[17]]: first_correspondence_str,
+    [column_headings[18]]: correspondence_str,
   };
 }
 
@@ -509,12 +509,21 @@ async function get_ticket_transactions_history_data_by_type(
 }
 
 function array_to_string(array) {
-  return he
-    .decode(JSON.stringify(array))
-    ?.replace(/['"]+/g, "")
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t");
+
+  array = array.map((member) => {
+    return (
+      '"' +
+      he
+        .decode(JSON.stringify(member)?.replace(/['"]+/g, ""))
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "\r")
+        .replace(/\\t/g, "\t") +
+      '"'
+    );
+  });
+
+  return array.join(", ");
+
 }
 
 /**
