@@ -439,7 +439,9 @@ async function create_ticket_obj(
     [column_headings[12]]: '"' + ticket_data.Subject.replace(/"/g, '\\"') + '"',
     [column_headings[13]]:
       '"' +
-      get_severity_mapping_value(ticket_data.SLA.replace(/"/g, '\\"')) +
+      get_severity_mapping_value(
+        ticket_data.SLA ? ticket_data.SLA.replace(/"/g, '\\"') : ''
+      ) +
       '"',
     [column_headings[14]]: get_ticket_custom_field_value(
       ticket_data.CustomFields,
@@ -581,7 +583,7 @@ function get_severity_mapping_value(rt_sla) {
     'Severe': 'P1. Critical',
   };
 
-  return mapping[rt_sla];
+  return rt_sla ? mapping[rt_sla] : 'P3. Minor';
 }
 
 /**
